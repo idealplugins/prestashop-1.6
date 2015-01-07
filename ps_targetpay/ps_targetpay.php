@@ -84,7 +84,7 @@ class ps_targetpay extends PaymentModule {
 		`paymethod` varchar(8) NOT NULL DEFAULT 'IDE',
 		`transaction_id` varchar(255) NOT NULL,
 		`bank_id` varchar(8) NOT NULL,
-		`description` int(64) NOT NULL,
+		`description` varchar(32) NOT NULL,
 		`amount` decimal(11,2) NOT NULL,
 		`bankaccount` varchar(25) NULL,
 		`name` varchar(35) NULL,
