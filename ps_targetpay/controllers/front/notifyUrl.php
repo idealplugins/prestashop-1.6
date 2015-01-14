@@ -33,8 +33,6 @@ class ps_targetpaynotifyUrlModuleFrontController extends ModuleFrontController
 		
 		$targetpayObj->checkPayment($trxid);
 
-		mail ('eveline@vdboom.nl', 'status', Configuration::get('TEST'));
-		
 		if ($targetpayObj->getPaidStatus() || Configuration::get('TEST')) {
 			$state = Configuration::get('PS_OS_PAYMENT');
 			$cart = new Cart($transactionInfoArr["cart_id"]);
