@@ -84,7 +84,7 @@ class ps_targetpay extends PaymentModule {
 		`paymethod` varchar(8) NOT NULL DEFAULT 'IDE',
 		`transaction_id` varchar(255) NOT NULL,
 		`bank_id` varchar(8) NOT NULL,
-		`description` varchar(32) NOT NULL,
+		`description` int(64) NOT NULL,
 		`amount` decimal(11,2) NOT NULL,
 		`bankaccount` varchar(25) NULL,
 		`name` varchar(35) NULL,
@@ -94,7 +94,7 @@ class ps_targetpay extends PaymentModule {
 		) ENGINE = MYISAM ";
 		 
 		$db->Execute($query);
-		Configuration::updateValue('RTLO', 94103); // Layoutcode from account 'yellowmelon'
+		Configuration::updateValue('RTLO', 94103); // Default TargetPay
 		return true;
 	}
 	
@@ -111,7 +111,12 @@ class ps_targetpay extends PaymentModule {
 				Configuration::updateValue('RTLO', $RTLO); 
 				$output .= $this->displayConfirmation($this->l('RTLO updated'));
 			}
+
+			$TEST = strval(Tools::getValue('TEST'));
+			Configuration::updateValue('TEST', ($TEST == 1) ? '1' : '0'); 
+			$output .= $this->displayConfirmation($this->l('Testmode updated'));
 		}
+
 		return $output.$this->displayForm();
 	}
 
@@ -131,7 +136,28 @@ class ps_targetpay extends PaymentModule {
 									'name' => 'RTLO',
 									'size' => 20,
 									'required' => true
-									)
+									),
+
+								array(
+									'type'      => 'radio',               
+									'label'     => $this->l('Testmode'),  
+									'name'      => 'TEST', 
+									'required'  => true, 
+									'is_bool'   => true, 
+
+								  	'values'    => array(                   
+								    	array(
+								      		'id'    => 'active_off',
+								      		'value' => 0,
+								      		'label' => $this->l('Disabled: only actual payments will be accepted.')
+								    	),
+									    array(
+								      		'id'    => 'active_on',         
+								      		'value' => 1,                   
+								      		'label' => $this->l('Enabled: canceled payments will be accepted as well. Turn off after testing!')	
+								    	)
+								  	),
+								),						
 							),
 			'submit' => array(
 								'title' => $this->l('Save'),
@@ -171,6 +197,7 @@ class ps_targetpay extends PaymentModule {
 
 		// Load current value
 		$helper->fields_value['RTLO'] = Configuration::get('RTLO');
+		$helper->fields_value['TEST'] = Configuration::get('TEST');
 		return $helper->generateForm($fields_form);
 	}
 

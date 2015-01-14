@@ -29,6 +29,7 @@ class Ps_targetpayPaymentModuleFrontController extends ModuleFrontController
 		$targetpayObj->setBankId($bankID);
 		$targetpayObj->setAmount(($cart->getOrderTotal()*100));
 		$targetpayObj->setDescription('Cart id: '.$cart->id);
+
 		$returnUrl = Context::getContext()->link->getModuleLink('ps_targetpay', 'returnUrl', array('cartid'=>$cart->id));
 		$targetpayObj->setReturnUrl($returnUrl);
 		$reportUrl = Context::getContext()->link->getModuleLink('ps_targetpay', 'notifyUrl', array('cartid'=>$cart->id));

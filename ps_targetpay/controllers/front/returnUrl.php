@@ -35,8 +35,9 @@ class ps_targetpayreturnUrlModuleFrontController extends ModuleFrontController
 		$targetpayObj = new TargetPayCore($paymentInfo["paymethod"],$paymentInfo["rtlo"]);
 		$targetpayObj->checkPayment($trxid);
 		
-		$result = $targetpayObj->getPaidStatus();
-		if($targetpayObj->getPaidStatus() == false) {
+		$result = $targetpayObj->getPaidStatus() || Configuration::get('TEST');
+
+		if (!$result) {
 			return $this->handleError($targetpayObj->getErrorMessage(),$paymentInfo);
 		}
 		return $this->handleSuccess('The payment is paid successfully.',$paymentInfo);

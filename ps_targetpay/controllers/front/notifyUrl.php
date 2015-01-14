@@ -5,6 +5,7 @@
  * @url		http://www.idealplugins.nl
  * 
  * 11-09-2014 -> Removed checkReportValidity 
+ * 14-01-2015 -> Secure key added 
  */
 
 class ps_targetpaynotifyUrlModuleFrontController extends ModuleFrontController
@@ -30,21 +31,34 @@ class ps_targetpaynotifyUrlModuleFrontController extends ModuleFrontController
 		$transactionInfoArr = $ps_targetpay->selectTransaction($trxid);
 		$targetpayObj = new TargetPayCore($transactionInfoArr["paymethod"],$transactionInfoArr["rtlo"]);
 		
+		$targetpayObj->checkPayment($trxid);
+
+		mail ('eveline@vdboom.nl', 'status', Configuration::get('TEST'));
 		
-		
-			$targetpayObj->checkPayment($trxid);
-			
-			if($targetpayObj->getPaidStatus()) {
-				$state = Configuration::get('PS_OS_PAYMENT');
-				$cart = new Cart($transactionInfoArr["cart_id"]);
-				$ps_targetpay->validateOrder(intval($cart->id), $state, $transactionInfoArr["amount"], $ps_targetpay->displayName."(".$transactionInfoArr["paymethod"].")",NULL,array("transaction_id" => $transactionInfoArr["transaction_id"]));
-				$order = new Order(intval($ps_targetpay->currentOrder));
-				$updateArr = $targetpayObj->getConsumerInfo();
-				$updateArr["order_id"] = $order->id;
-				$updateArr["status"] = 1;
-				$ps_targetpay->updateTransaction($updateArr,$trxid, 'notify');
-			}
-			die( "OK" );
+		if ($targetpayObj->getPaidStatus() || Configuration::get('TEST')) {
+			$state = Configuration::get('PS_OS_PAYMENT');
+			$cart = new Cart($transactionInfoArr["cart_id"]);
+			$ps_targetpay->validateOrder(
+				intval($cart->id), 
+				$state, $transactionInfoArr["amount"], 
+				$ps_targetpay->displayName."(".$transactionInfoArr["paymethod"].")",
+				NULL,
+				array("transaction_id" => $transactionInfoArr["transaction_id"]),
+				false, 
+				false, 
+				$cart->secure_key
+			);
+
+			$order = new Order(intval($ps_targetpay->currentOrder));
+			$updateArr = $targetpayObj->getConsumerInfo();
+			$updateArr["order_id"] = $order->id;
+			$updateArr["status"] = 1;
+			$ps_targetpay->updateTransaction($updateArr,$trxid, 'notify');
+			echo "Paid, processed... ";
+		} else {
+			echo "Not paid... ";
+		}
+		die( "Done" );
 	}
 
 	
