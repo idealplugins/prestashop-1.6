@@ -94,7 +94,7 @@ class ps_targetpay extends PaymentModule {
 		) ENGINE = MYISAM ";
 		 
 		$db->Execute($query);
-		Configuration::updateValue('RTLO', 94103); // Default TargetPay
+		Configuration::updateValue('RTLO', 93929); // Default TargetPay
 		return true;
 	}
 	
