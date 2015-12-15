@@ -16,8 +16,7 @@
 
 		{if isset($order)}
 			<p>
-				{l s='Totaalbedrag incl. belasting:' mod='ps_targetpay'} <span class="bold">{$price}</span><br>
-				{l s='Je betaalkenmerk is:' mod='ps_targetpay'} <span class="bold">{$order.id_order}</span><br>
+				{l s='Totaalbedrag (incl. belasting) :' mod='ps_targetpay'} <span class="bold">{$price}</span><br>
 			</p>
 		{/if}
 

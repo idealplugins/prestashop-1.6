@@ -20,13 +20,31 @@ class Ps_targetpayPaymentModuleFrontController extends ModuleFrontController
 		parent::initContent();
 		
 		$cart = $this->context->cart;
+		
+		
 		$bankID = Tools::getValue('bankID');
+		
+		
+		
+		$eu = Tools::getValue('eu');
 		$cartID = $cart->id;
 		$rtlo = Configuration::get('RTLO');
 		
-		$appId = '863dcf87fc7cf24696ac1446633c0da0';
+		$appId = ($eu) ? '71578bc5130b852143e9695c8928901d' : '863dcf87fc7cf24696ac1446633c0da0';
 		$targetpayObj = new TargetPayCore("AUTO",$rtlo,$appId);
-		$targetpayObj->setBankId($bankID);
+		
+		if($eu) {
+			$eu = 1;
+			$method = Tools::getValue('method');
+			$targetpayObj->overwritePayMethod($method);
+			if($method == 'DEB') {
+				$targetpayObj->setCountryId(49);
+			}
+		} else {
+			$eu = 0;
+			$targetpayObj->setBankId($bankID);
+			
+		}
 		$targetpayObj->setAmount(($cart->getOrderTotal()*100));
 		$targetpayObj->setDescription('Cart id: '.$cart->id);
 
@@ -34,7 +52,7 @@ class Ps_targetpayPaymentModuleFrontController extends ModuleFrontController
 		$targetpayObj->setReturnUrl($returnUrl);
 		$reportUrl = Context::getContext()->link->getModuleLink('ps_targetpay', 'notifyUrl', array('cartid'=>$cart->id));
 		$targetpayObj->setReportUrl($reportUrl);
-		$result = @$targetpayObj->startPayment();
+		$result = @$targetpayObj->startPayment($eu);
 
 		if($result !== false) {
 
@@ -58,7 +76,7 @@ class Ps_targetpayPaymentModuleFrontController extends ModuleFrontController
 					$targetpayObj->getDescription(),
 					($targetpayObj->getAmount()/100),
 					0,
-					'payment'
+					'payment - eu-module:'.$eu
 					);
 					
 			Db::getInstance()->Execute($sql);

@@ -38,7 +38,7 @@ class TargetPayCore
 
     // Constant array's
 
-    protected $paymentOptions		= array("AUTO", "IDE", "MRC", "DEB", "AFT", "WAL");		
+    protected $paymentOptions		= array("AUTO", "IDE", "MRC", "DEB", "WAL");		
     																			/*  If payMethod is set to 'AUTO' it will decided on the value of bankId
     																			    Then, when requested the bankId list will be filled with
 
@@ -47,12 +47,12 @@ class TargetPayCore
 																				    c) 'DEB' + countrycode for Sofort Banking, e.g. DEB49 for Germany
                                                                                 */
 
-    protected $minimumAmounts		= array("AUTO" => 84, "IDE" => 84, "MRC" => 49, "DEB" => 10, "AFT" => 1, "WAL" => 10);
+    protected $minimumAmounts		= array("AUTO" => 84, "IDE" => 84, "MRC" => 49, "DEB" => 10, "WAL" => 10);
+    public $descriptions			= array("IDE" => 'iDEAL', "MRC" => 'Mister Cash', "DEB" => 'Sofort Banking');
 
     protected $checkAPIs			= array("IDE" => "https://www.targetpay.com/ideal/check",
     										"MRC" => "https://www.targetpay.com/mrcash/check",
                                             "DEB" => "https://www.targetpay.com/directebanking/check",
-                                            "AFT" => "https://www.targetpay.com/afterpay/check",
                                             "WAL" => "http://www.targetpay.com/paysafecard/check"
                                             );
 
@@ -108,7 +108,7 @@ class TargetPayCore
 
 	public function getBankList() 
 	{
-		$url = "https://www.targetpay.com/api/idealplugins?banklist=".urlencode($this->payMethod);
+		$url = "https://www.targetpay.com/api/idealplugins?banklist=".urlencode($this->payMethod).(($this->payMethod == 'IDE') ? '&ver=3' : '');
 
 		$xml = $this->httpRequest ($url);
         if (!$xml) {
@@ -120,7 +120,6 @@ class TargetPayCore
 				$banks_array["{$bank->bank_id}"] = "{$bank->bank_name}";
 			}
         }
-
 		return $banks_array;
 	}
 
@@ -138,7 +137,7 @@ class TargetPayCore
 	 *		- Get the actual started payment method, in case of auto-setting, using getPayMethod()
 	 */
 
-	public function startPayment () 
+	public function startPayment ($euPlugin = false) 
 	{
 		if (!$this->rtlo) {
 			$this->errorMessage = self::ERR_NO_RTLO;
@@ -170,7 +169,7 @@ class TargetPayCore
 			return false;
 		}
 
-		if (($this->payMethod=="IDE") && (!$this->bankId)) {
+		if (($this->payMethod=="IDE") && (!$this->bankId) && $euPlugin == 0) {
         	$this->errorMessage = self::ERR_IDEAL_NO_BANK;
             return false;
         }
@@ -179,7 +178,7 @@ class TargetPayCore
         	$this->errorMessage = self::ERR_SOFORT_NO_BANK;
             return false;
         }
-
+        
         $this->returnUrl = str_replace("%payMethod%", $this->payMethod, $this->returnUrl);
         $this->cancelUrl = str_replace("%payMethod%", $this->payMethod, $this->cancelUrl);
         $this->reportUrl = str_replace("%payMethod%", $this->payMethod, $this->reportUrl);
@@ -192,8 +191,7 @@ class TargetPayCore
         		"amount=".urlencode($this->amount)."&".
         		"description=".urlencode($this->description)."&".
                 "currency=".urlencode($this->currency)."&".
-                (($this->payMethod=="IDE") ? "ver=2&language=nl&" : "").
-                (($this->payMethod=="AFT") ? "ver=2&language=nl&" : "").
+                (($this->payMethod=="IDE") ? "ver=3&language=nl&" : "").
                 (($this->payMethod=="MRC") ? "lang=".urlencode($this->getLanguage(array("NL","FR","EN"),"NL"))."&" : "").
                 (($this->payMethod=="DEB") ? "type=1&country=".urlencode($this->countryId)."&lang=".urlencode($this->getLanguage(array("NL","EN","DE"),"DE"))."&" : "").
                 "userip=".urlencode($_SERVER["REMOTE_ADDR"])."&".
@@ -201,13 +199,13 @@ class TargetPayCore
         		"returnurl=".urlencode($this->returnUrl)."&".
                 ((!empty($this->cancelUrl)) ? "cancelurl=".urlencode($this->cancelUrl)."&" : "").
         		"reporturl=".urlencode($this->reportUrl);
-
         if (is_array($this->parameters)) 
         	foreach ($this->parameters as $k => $v) 
         		$url .= "&" . $k . "=" . urlencode($v);      
 
         $result = $this->httpRequest ($url);
         if (substr($result, 0, 6)=="000000") {
+			var_dump($result);
             $result = substr($result, 7);
             list ($this->transactionId, $this->bankUrl) = explode("|", $result);
             return $this->bankUrl;
@@ -335,6 +333,10 @@ class TargetPayCore
 	{
 		return $this->amount;
 	}
+	
+	public function overwritePayMethod($paymethod) {
+		$this->payMethod = $paymethod;
+	}
 
 	public function setBankId ($bankId) 
 	{
@@ -344,12 +346,7 @@ class TargetPayCore
 	    	$bankId = strtoupper ($bankId);
 	    	if (substr($bankId,0,3)=="IDE") {
 	        	$this->payMethod = "IDE";
-	            $this->bankId = substr($bankId, 3, 4);
-	            return true;
-	        } else
-	        if (substr($bankId,0,3)=="AFT") {
-	        	$this->payMethod = "AFT";
-	            $this->bankId = substr($bankId, 3, 4);
+	        	$this->bankId = substr($bankId, 3, strlen($bankId));
 	            return true;
 	        } else
 	        if ($bankId=="MRC") {

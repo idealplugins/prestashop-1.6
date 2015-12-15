@@ -4,19 +4,21 @@
  * @author	Yellow Melon B.V.
  * @url		http://www.idealplugins.nl
  */
- 
+if (!defined('_PS_VERSION_'))
+  exit;
+  
 class ps_targetpay extends PaymentModule {
 	
 	private $_html = '';
     private $_postErrors = array();
 	
-	function __construct()    {
+	function __construct() {
 		$this->name = 'ps_targetpay';
 		$this->tab = 'payments_gateways';
 		$this->author = 'idealplugins.nl';
 		$this->version = 1;
 		
-		//$this->ps_versions_compliancy = array('min' => '1.5', 'max' => '1.5'); 
+		$this->ps_versions_compliancy = array('min' => '1.6', 'max' => '1.6'); 
 		
 		parent::__construct();
 		
@@ -27,12 +29,20 @@ class ps_targetpay extends PaymentModule {
 
 		$this->currencies = true;
 		$this->currencies_mode = 'radio';
-
+		
+		$this->need_instance = 0;
+		$this->bootstrap = false;
 	}
 	
 	/* Install / uninstall stuff */
 	function install() {
-		if (!parent::install() || !$this->createTargetpayIdealTable() || !$this->registerHook('invoice') || !$this->registerHook('payment') || !$this->registerHook('paymentReturn') || Currency::refreshCurrencies()) {
+		if (!parent::install() ||
+				!$this->createTargetpayIdealTable() ||
+				!$this->registerHook('advancedPaymentOptions') ||
+				!$this->registerHook('invoice') ||
+				!$this->registerHook('payment') ||
+				!$this->registerHook('paymentReturn') ||
+				Currency::refreshCurrencies()) {
 			return false;
 		}
 		
@@ -84,13 +94,13 @@ class ps_targetpay extends PaymentModule {
 		`paymethod` varchar(8) NOT NULL DEFAULT 'IDE',
 		`transaction_id` varchar(255) NOT NULL,
 		`bank_id` varchar(8) NOT NULL,
-		`description` int(64) NOT NULL,
+		`description` varchar(64) NOT NULL,
 		`amount` decimal(11,2) NOT NULL,
 		`bankaccount` varchar(25) NULL,
 		`name` varchar(35) NULL,
 		`city` varchar(25) NULL,
 		`status` int(5) NOT NULL,
-		`via` varchar(10) NULL
+		`via` varchar(25) NULL
 		) ENGINE = MYISAM ";
 		 
 		$db->Execute($query);
@@ -118,6 +128,27 @@ class ps_targetpay extends PaymentModule {
 		}
 
 		return $output.$this->displayForm();
+	}
+	
+	public function hookAdvancedPaymentOptions($params)
+	{
+		$newOptions = [];
+		$rtlo = Configuration::get('RTLO');
+		require_once('targetpay.class.php');
+		$targetpayCore = new TargetPayCore("auto",$rtlo);
+			
+		foreach($targetpayCore->descriptions AS $key => $value) {
+			$newOption = new Core_Business_Payment_PaymentOption();
+			$newOption->setCallToActionText('Afrekenen met '.$value)
+						->setModuleName($value)
+						->setAction('index.php')
+						->setInputs(['eu'=>1,'fc' => 'module','module' => 'ps_targetpay', 'controller' => 'payment','method' => $key])
+						->setMethod('post')
+						->setLogo('modules/ps_targetpay/method-'.strtolower($key).'.png');
+			$newOptions[] = $newOption;
+		}
+        return $newOptions;
+		
 	}
 
 	public function displayForm() {

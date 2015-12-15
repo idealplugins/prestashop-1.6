@@ -28,17 +28,26 @@ class ps_targetpaynotifyUrlModuleFrontController extends ModuleFrontController
 		$trxid = Tools::getValue('trxid');
 		$status = (int)Tools::getValue('status');
 		
+		
+
 		$transactionInfoArr = $ps_targetpay->selectTransaction($trxid);
+		
 		$targetpayObj = new TargetPayCore($transactionInfoArr["paymethod"],$transactionInfoArr["rtlo"]);
 		
 		$targetpayObj->checkPayment($trxid);
 
 		if ($targetpayObj->getPaidStatus() || Configuration::get('TEST')) {
+			
+
 			$state = Configuration::get('PS_OS_PAYMENT');
+
 			$cart = new Cart($transactionInfoArr["cart_id"]);
+			
+
 			$ps_targetpay->validateOrder(
 				intval($cart->id), 
-				$state, $transactionInfoArr["amount"], 
+				$state,
+				$transactionInfoArr["amount"], 
 				$ps_targetpay->displayName."(".$transactionInfoArr["paymethod"].")",
 				NULL,
 				array("transaction_id" => $transactionInfoArr["transaction_id"]),
