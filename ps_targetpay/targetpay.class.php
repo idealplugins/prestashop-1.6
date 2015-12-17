@@ -23,7 +23,7 @@ class TargetPayCore
 	{
     // Constants
 
-	const     MIN_AMOUNT			= 84;
+	const     MIN_AMOUNT			= 1;
 
     const     ERR_NO_AMOUNT			= "Geen bedrag meegegeven | No amount given";
     const	  ERR_NO_DESCRIPTION	= "Geen omschrijving meegegeven | No description given";
@@ -47,7 +47,7 @@ class TargetPayCore
 																				    c) 'DEB' + countrycode for Sofort Banking, e.g. DEB49 for Germany
                                                                                 */
 
-    protected $minimumAmounts		= array("AUTO" => 84, "IDE" => 84, "MRC" => 49, "DEB" => 10, "WAL" => 10);
+    protected $minimumAmounts		= array("AUTO" => 84, "IDE" => 1, "MRC" => 49, "DEB" => 10, "WAL" => 10);
     public $descriptions			= array("IDE" => 'iDEAL', "MRC" => 'Mister Cash', "DEB" => 'Sofort Banking');
 
     protected $checkAPIs			= array("IDE" => "https://www.targetpay.com/ideal/check",
@@ -187,6 +187,7 @@ class TargetPayCore
     			"paymethod=".urlencode($this->payMethod)."&".
                 "app_id=".urlencode($this->appId)."&".
         		"rtlo=".urlencode($this->rtlo)."&".
+        		"test=".(($this->testMode) ? "1" : "0")."&".
         		"bank=".urlencode($this->bankId)."&".
         		"amount=".urlencode($this->amount)."&".
         		"description=".urlencode($this->description)."&".
@@ -199,9 +200,12 @@ class TargetPayCore
         		"returnurl=".urlencode($this->returnUrl)."&".
                 ((!empty($this->cancelUrl)) ? "cancelurl=".urlencode($this->cancelUrl)."&" : "").
         		"reporturl=".urlencode($this->reportUrl);
-        if (is_array($this->parameters)) 
-        	foreach ($this->parameters as $k => $v) 
+        		
+        if (is_array($this->parameters))  {
+        	foreach ($this->parameters as $k => $v) {
         		$url .= "&" . $k . "=" . urlencode($v);      
+			}
+		}
 
         $result = $this->httpRequest ($url);
         if (substr($result, 0, 6)=="000000") {
@@ -264,7 +268,7 @@ class TargetPayCore
 		$this->consumerInfo["name"] = "customername";
 		$this->consumerInfo["city"] = "city";
 
-        if ($resultCode=="000000 OK") {
+        if ($resultCode=="000000 OK" || $this->testMode == 1) {
             $this->consumerInfo["bankaccount"] = $consumerBank;
             $this->consumerInfo["name"] = $consumerName;
             $this->consumerInfo["city"] = ($consumerCity!="NOT PROVIDED") ? $consumerCity : "";

@@ -25,13 +25,14 @@ class Ps_targetpayPaymentModuleFrontController extends ModuleFrontController
 		$bankID = Tools::getValue('bankID');
 		
 		
-		
+		$test = Configuration::get('TEST');
 		$eu = Tools::getValue('eu');
 		$cartID = $cart->id;
 		$rtlo = Configuration::get('RTLO');
 		
 		$appId = ($eu) ? '71578bc5130b852143e9695c8928901d' : '863dcf87fc7cf24696ac1446633c0da0';
-		$targetpayObj = new TargetPayCore("AUTO",$rtlo,$appId);
+		
+		$targetpayObj = new TargetPayCore("AUTO",$rtlo,$appId, "nl",$test);
 		
 		if($eu) {
 			$eu = 1;
