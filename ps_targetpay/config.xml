@@ -2,7 +2,7 @@
 <module>
 	<name>ps_targetpay</name>
 	<displayName><![CDATA[TargetPay Bank Payments]]></displayName>
-	<version><![CDATA[1]]></version>
+	<version><![CDATA[1.0.1]]></version>
 	<description><![CDATA[Let the customer pay with popular payment services such as iDEAL (The Netherlands), MrCash (Belgium), SOFORT Banking (Germany)]]></description>
 	<author><![CDATA[idealplugins.nl]]></author>
 	<tab><![CDATA[payments_gateways]]></tab>

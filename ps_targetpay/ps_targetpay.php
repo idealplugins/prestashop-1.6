@@ -16,7 +16,7 @@ class ps_targetpay extends PaymentModule {
 		$this->name = 'ps_targetpay';
 		$this->tab = 'payments_gateways';
 		$this->author = 'idealplugins.nl';
-		$this->version = 1;
+		$this->version = '1.0.1';
 		
 		$this->ps_versions_compliancy = array('min' => '1.6', 'max' => '1.6'); 
 		
@@ -100,10 +100,12 @@ class ps_targetpay extends PaymentModule {
 		`name` varchar(35) NULL,
 		`city` varchar(25) NULL,
 		`status` int(5) NOT NULL,
-		`via` varchar(25) NULL
-		) ENGINE = MYISAM ";
+		`via` varchar(25) NULL,
+		INDEX `IX_tp_transaction_id` (`transaction_id`),
+		) ENGINE = InnoDB ";
 		 
 		$db->Execute($query);
+
 		Configuration::updateValue('RTLO', 93929); // Default TargetPay
 		return true;
 	}
