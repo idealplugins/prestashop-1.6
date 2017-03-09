@@ -1,107 +1,52 @@
 <?php
+
 /**
- * @file	Provides support for TargetPay iDEAL, Mister Cash and Sofort Banking
- * @author	Yellow Melon B.V.
- * @url		http://www.idealplugins.nl
+ * @file    Provides support for TargetPay iDEAL, Mister Cash and Sofort Banking ...
+ * @author  Yellow Melon B.V.
+ * @url     http://www.idealplugins.nl
  */
-
-class Ps_targetpayPaymentModuleFrontController extends ModuleFrontController
+class Ps_TargetpayPaymentModuleFrontController extends ModuleFrontController
 {
-	public $ssl = true;
+    public $ssl = true;
 
-	/**
-	 * @see FrontController::initContent()
-	 */
-	public function initContent()
-	{
-		$file = realpath(dirname(__FILE__) . '/../../targetpay.class.php');
-		require_once($file);
-		
-		parent::initContent();
-		
-		$cart = $this->context->cart;
-		
-		
-		$bankID = Tools::getValue('bankID');
-		
-		
-		$test = Configuration::get('TEST');
-		$eu = Tools::getValue('eu');
-		$cartID = $cart->id;
-		$rtlo = Configuration::get('RTLO');
-		
-		$appId = ($eu) ? '71578bc5130b852143e9695c8928901d' : '863dcf87fc7cf24696ac1446633c0da0';
-		
-		$targetpayObj = new TargetPayCore("AUTO",$rtlo,$appId, "nl",$test);
-		
-		if($eu) {
-			$eu = 1;
-			$method = Tools::getValue('method');
-			$targetpayObj->overwritePayMethod($method);
-			if($method == 'DEB') {
-				$targetpayObj->setCountryId(49);
-			}
-		} else {
-			$eu = 0;
-			$targetpayObj->setBankId($bankID);
-			
-		}
-		$targetpayObj->setAmount(($cart->getOrderTotal()*100));
-		$targetpayObj->setDescription('Cart id: '.$cart->id);
-
-		$returnUrl = Context::getContext()->link->getModuleLink('ps_targetpay', 'returnUrl', array('cartid'=>$cart->id));
-		$targetpayObj->setReturnUrl($returnUrl);
-		$reportUrl = Context::getContext()->link->getModuleLink('ps_targetpay', 'notifyUrl', array('cartid'=>$cart->id));
-		$targetpayObj->setReportUrl($reportUrl);
-		$result = @$targetpayObj->startPayment($eu);
-
-		if($result !== false) {
-
-			$sql = sprintf("INSERT INTO `"._DB_PREFIX_."targetpay_ideal`
-					SET
-					`cart_id` = %d,
-					`paymethod` = '%s',
-					`rtlo` = %d,
-					`transaction_id` = '%s',
-					`bank_id` = '%s',
-					`description` = '%s',
-					`amount` = '%s',
-					`status` = %d,
-					`via` = '%s'
-					",
-					$cartID,
-					$targetpayObj->getPayMethod(),
-					$rtlo,
-					$targetpayObj->getTransactionId(),
-					$targetpayObj->getBankId(),
-					$targetpayObj->getDescription(),
-					($targetpayObj->getAmount()/100),
-					0,
-					'payment - eu-module:'.$eu
-					);
-					
-			Db::getInstance()->Execute($sql);
-
-			Tools::redirectLink($result);
-		} else {
-			return $this->handleError($targetpayObj->getErrorMessage());
-		}
-
-	}
-	
-	function handleError($frontErrorMessage) {
-		$cart = $this->context->cart;
-		$this->context->smarty->assign(
-			array(
-				'message' => 'Error',
-				'logs' => array(
-					$frontErrorMessage
-				),
-				'order' => array('id_order' => $cart->id),
-				'price' => Tools::displayPrice($cart->getOrderTotal(), $this->context->currency),
-			)
-		);
-		$this->setTemplate('error.tpl');
-		return;
-	}
+    /**
+     *
+     * @see FrontController::initContent()
+     */
+    public function initContent()
+    {
+        $ps_targetpay = $this->module;
+        $bankID = Tools::getValue('bankID');
+        $test = Configuration::get('TARGETPAY_TESTMODE');
+        $rtlo = Configuration::get('TARGETPAY_RTLO');
+        $cart = $this->context->cart;
+        $cartId = $cart->id;
+        $amount = $cart->getOrderTotal();
+        $targetpayObj = new TargetPayCore("AUTO", $rtlo, $ps_targetpay->appId, "nl", $test);
+        
+        $targetpayObj->setBankId($bankID);
+        $targetpayObj->setAmount($amount * 100);
+        $targetpayObj->setDescription('Cart id: ' . $cartId);
+        
+        $returnUrl = Context::getContext()->link->getModuleLink('ps_targetpay', 'returnUrl');
+        $targetpayObj->setReturnUrl($returnUrl);
+        $reportUrl = Context::getContext()->link->getModuleLink('ps_targetpay', 'notifyUrl');
+        $targetpayObj->setReportUrl($reportUrl);
+        $result = @$targetpayObj->startPayment();
+        
+        if ($result !== false) {
+            $state = Configuration::get('PS_OS_CHEQUE');
+            $ps_targetpay->validateOrder($cartId, $state, $amount, $ps_targetpay->displayName . "(" . $ps_targetpay->listMethods[$targetpayObj->getPayMethod()]['name'] . ")", null, array(
+                "transaction_id" => $targetpayObj->getTransactionId()
+            ), false, false, $cart->secure_key);
+            $sql = sprintf("INSERT INTO `" . _DB_PREFIX_ . "targetpay_ideal`
+                    (`order_id`, `cart_id`, `paymethod`, `rtlo`, `transaction_id`, `bank_id`, `description`, `amount`, `status`, `via`)
+                    VALUES (%d, %d, '%s', %d, '%s', '%s', '%s', '%s', %d, '%s')", $ps_targetpay->currentOrder, $cartId, $targetpayObj->getPayMethod(), $rtlo, $targetpayObj->getTransactionId(), $targetpayObj->getBankId(), $targetpayObj->getDescription(), $amount, 0, 'payment');
+            
+            Db::getInstance()->Execute($sql);
+            Tools::redirectLink($result);
+        } else {
+            Tools::redirectLink('index.php?controller=order&step=3&targetpayerror=' . urldecode($targetpayObj->getErrorMessage()));
+        }
+    }
 }

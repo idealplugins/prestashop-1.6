@@ -1,0 +1,34 @@
+p.payment_module a.bank {
+    background: url() 10px 15px no-repeat #fbfbfb;
+    width: 48%;
+    display: inline-block;
+    margin-bottom: 5px;
+    padding: 33px 25px 34px 85px;
+    font-size: 16px;
+}
+
+p.payment_module a.ideal:after,
+p.payment_module a.mistercash:after,
+p.payment_module a.sofort:after,
+p.payment_module a.paysafecard:after,
+p.payment_module a.creaditcard:after {
+    display: block;
+    content: "\f054";
+    position: absolute;
+    right: 15px;
+    margin-top: -11px;
+    top: 50%;
+    font-family: "FontAwesome";
+    font-size: 25px;
+    height: 22px;
+    width: 14px;
+    color: #777777;
+}
+
+p.payment_module a.ideal:hover, p.payment_module a.mistercash:hover, p.payment_module a.sofort:hover, p.payment_module a.bank:hover {
+    background-color: #f6f6f6;
+}
+
+#ideal-bankselect, #sofort-bankselect {
+    display: none;
+}
