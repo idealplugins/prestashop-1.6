@@ -1,7 +1,7 @@
 # iDEAL plugin for Prestashop 1.6
 
 ## Usage
-Use this plugin to add support for iDEAL, Mister Cash, Sofort and other payment methods of 
+Use this plugin to add support for iDEAL, Bancontact, Sofort, Credit Cards and other payment methods of 
 TargetPay.com to your webstore. 
 
 ## Installation
