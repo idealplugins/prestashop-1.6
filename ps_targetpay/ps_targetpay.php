@@ -16,6 +16,8 @@ class Ps_Targetpay extends PaymentModule
 {
 
     const DEFAULT_RTLO = 93929;
+    // you can obtain your api key in your organization dashboard on https://digiwallet.nl
+    const DEFAULT_TOKEN = '';
 
     public $listMethods;
 
@@ -53,6 +55,7 @@ class Ps_Targetpay extends PaymentModule
         }
         
         Configuration::updateValue('TARGETPAY_RTLO', self::DEFAULT_RTLO); // Default TargetPay
+        Configuration::updateValue('TARGETPAY_TOKEN', self::DEFAULT_TOKEN); // Default TargetPay
         foreach ($this->listMethods as $id => $method) {
             Configuration::updateValue('ENABLE_METHOD_' . $id, $method['enabled']);
         }
