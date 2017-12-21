@@ -1,17 +1,4 @@
-p.payment_module a.bank {
-    background: url() 10px 15px no-repeat #fbfbfb;
-    width: 48%;
-    display: inline-block;
-    margin-bottom: 5px;
-    padding: 33px 25px 34px 85px;
-    font-size: 16px;
-}
-
-p.payment_module a.ideal:after,
-p.payment_module a.mistercash:after,
-p.payment_module a.sofort:after,
-p.payment_module a.paysafecard:after,
-p.payment_module a.creaditcard:after {
+p.payment_module a.tp_method:after {
     display: block;
     content: "\f054";
     position: absolute;
@@ -25,10 +12,20 @@ p.payment_module a.creaditcard:after {
     color: #777777;
 }
 
-p.payment_module a.ideal:hover, p.payment_module a.mistercash:hover, p.payment_module a.sofort:hover, p.payment_module a.bank:hover {
-    background-color: #f6f6f6;
+p.payment_module a.bank {
+    background: url() 10px 15px no-repeat #fbfbfb;
+    width: 48%;
+    display: inline-block;
+    margin-bottom: 5px;
+    padding: 33px 25px 34px 85px;
+    font-size: 16px;
 }
 
 #ideal-bankselect, #sofort-bankselect {
     display: none;
+}
+
+
+p.payment_module a.tp_method:hover, p.payment_module a.bank:hover {
+    background-color: #f6f6f6;
 }

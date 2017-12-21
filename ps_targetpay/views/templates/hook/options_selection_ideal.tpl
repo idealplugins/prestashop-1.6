@@ -2,7 +2,7 @@
 <div class="row">
     <div class="col-xs-12 col-md-6">
         <p class="payment_module">
-            <a href="#" id="ideal-toggle" class="ideal" title="iDEAL">
+            <a href="#" id="ideal-toggle" class="tp_method" title="iDEAL">
             <img  src="{$this_path}/views/img/{$method}_50.png"/>
             </a>
         </p>
@@ -11,7 +11,7 @@
     <div class="col-xs-12 col-md-6" id="ideal-bankselect">
         <p class="payment_module">
         {foreach from=$idealBankListArr key=k item=v}
-            <a class="bank" href="index.php?fc=module&module=ps_targetpay&controller=payment&bankID={$k}" style="background-image: url(https://www.targetpay.com/gfx/banks/{$k}.png);">
+            <a class="bank" href="index.php?fc=module&module=ps_targetpay&controller=payment&method={$method}&option={$k}">
                 {$v}
             </a>
         {/foreach}

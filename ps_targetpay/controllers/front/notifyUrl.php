@@ -12,7 +12,7 @@
 class Ps_TargetpaynotifyUrlModuleFrontController extends ModuleFrontController
 {
     public $ssl = true;
-
+    
     /**
      *
      * @see FrontController::initContent()
@@ -21,10 +21,19 @@ class Ps_TargetpaynotifyUrlModuleFrontController extends ModuleFrontController
     {
         $ps_targetpay = $this->module;
         $trxid = Tools::getValue('trxid');
+        if(empty($trxid)) { //paypal use paypalid instead of trxid
+            $trxid = Tools::getValue('acquirerID');
+        }
+        if(empty($trxid)) { //afterpay use invoiceID instead of trxid
+            $trxid = Tools::getValue('invoiceID');
+        }
+        
         $transactionInfoArr = $ps_targetpay->selectTransaction($trxid);
         if ($transactionInfoArr) {
-            $ps_targetpay->updateOrderAfterCheck($transactionInfoArr, 'notify');
+            $return = $ps_targetpay->updateOrderAfterCheck($transactionInfoArr);
+            echo $return . "<br />";
+            die('Done version 1.6.xx');
         }
-        die();
+        die("Transaction is not found");
     }
 }

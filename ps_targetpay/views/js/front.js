@@ -1,9 +1,9 @@
 jQuery(document).ready(function () {
-    jQuery('#ideal-toggle').click(function () {
+    jQuery('body').on('click', '#ideal-toggle', function () {
         jQuery('#ideal-bankselect').toggle();
         return false;
     });
-    jQuery('#sofort-toggle').click(function () {
+    jQuery('body').on('click', '#sofort-toggle', function () {
         jQuery('#sofort-bankselect').toggle();
         return false;
     });

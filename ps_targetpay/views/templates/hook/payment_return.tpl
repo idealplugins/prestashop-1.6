@@ -7,8 +7,17 @@
         <br /> <strong>{l s='Your order will be sent as soon as we receive payment.' mod='ps_targetpay'}</strong>
         <br /> {l s='Thank you for shopping. While logged in, you may continue shopping or view your current order status and order history.' mod='ps_targetpay'}
     </div>
+{else if $status == 'processing'}
+    <p class="alert alert-info">{l s='Your order on %s is processing.' sprintf=$shop_name mod='ps_targetpay'}</p>
+    <div class="box">
+        {l s='Your order information:' mod='ps_targetpay'}
+        <br />- {l s='Order number' mod='ps_targetpay'} <strong>{$id_order}</strong>
+        <br />- {l s='Amount' mod='ps_targetpay'} <span class="price"><strong>{$total}</strong></span>
+        <br /> <strong>{l s='Payment is under processing. Your order will be sent as soon as we receive payment.' mod='ps_targetpay'}</strong>
+        <br /> {l s='Thank you for shopping. While logged in, you may continue shopping or view your current order status and order history.' mod='ps_targetpay'}
+    </div>
 {else}
-    <p class="alert alert-warning">Your order on Presta Shop 1.6 is failed.</p>
+    <p class="alert alert-warning">{l s='Your order on %s is failed.' sprintf=$shop_name mod='ps_targetpay'}</p>
     <div class="box">
         {l s='Your order information:' mod='ps_targetpay'}
         <br />- {l s='Order number' mod='ps_targetpay'} <strong>{$id_order}</strong>

@@ -4,48 +4,24 @@
  * @author  Yellow Melon B.V.
  * @url     http://www.idealplugins.nl
  */
+
+
 if (! defined('_PS_VERSION_')) {
     exit();
 }
 
-require_once('core/targetpay.class.php');
+require_once ('core/targetpay.class.php');
 
 class Ps_Targetpay extends PaymentModule
 {
+
     const DEFAULT_RTLO = 93929;
 
-    public $listMethods = array(
-        "IDE" => array(
-            'name' => 'iDEAL',
-            'enabled' => 1,
-            'extra_text' => 'Enable iDEAL method'
-        ),
-        "MRC" => array(
-            'name' => 'Bancontact',
-            'enabled' => 1,
-            'extra_text' => 'Enable Bancontact method'
-        ),
-        "DEB" => array(
-            'name' => 'Sofort Banking',
-            'enabled' => 1,
-            'extra_text' => 'Enable Sofort Banking method'
-        ),
-        'WAL' => array(
-            'name' => 'Paysafecard',
-            'enabled' => 1,
-            'extra_text' => 'Enable Paysafecard method'
-        ),
-        'CC' => array(
-            'name' => 'Creditcard',
-            'enabled' => 0,
-            'extra_text' => 'Enable Creditcard method (only possible when creditcard is activated on your targetpay account)'
-        )
-    );
-
-    public $appId = '863dcf87fc7cf24696ac1446633c0da0';
+    public $listMethods;
 
     public function __construct()
     {
+        $this->setListMethods();
         $this->name = 'ps_targetpay';
         $this->tab = 'payments_gateways';
         $this->version = '1.0.1';
@@ -53,12 +29,12 @@ class Ps_Targetpay extends PaymentModule
             'min' => '1.6',
             'max' => '1.6.99.99'
         );
-        $this->author = 'Harry';
+        $this->author = 'DigiWallet';
         $this->currencies = true;
         $this->currencies_mode = 'checkbox';
         $this->bootstrap = true;
         parent::__construct();
-        $this->displayName = $this->l('TargetPay Bank Payments');
+        $this->displayName = $this->l('DigiWallet Bank Payments');
         $this->description = $this->l('Let the customer pay with popular payment services such as iDEAL (The Netherlands), Bancontact (Belgium), SOFORT Banking (Germany)');
         if (! count(Currency::checkPaymentCurrencies($this->id))) {
             $this->warning = $this->l('No currency has been set for this module.');
@@ -80,15 +56,26 @@ class Ps_Targetpay extends PaymentModule
         foreach ($this->listMethods as $id => $method) {
             Configuration::updateValue('ENABLE_METHOD_' . $id, $method['enabled']);
         }
-        if (! parent::install() || ! $this->createTargetpayIdealTable() || ! $this->registerHook('header') || ! $this->registerHook('payment') || ! $this->registerHook('paymentReturn') || ! $this->registerHook('displayPaymentTop') || Currency::refreshCurrencies()) {
+        if (! parent::install() 
+            || ! $this->createTargetpayIdealTable() 
+            || ! $this->updateTargetpayIdealTable()
+            || ! $this->createOrderPartialStatus()
+            || ! $this->registerHook('header') 
+            || ! $this->registerHook('payment') 
+            || ! $this->registerHook('paymentReturn') 
+            || ! $this->registerHook('displayPaymentTop')
+            || ! $this->registerHook('displayBeforeShoppingCartBlock')
+            || ! $this->registerHook('actionOrderSlipAdd') // for refund
+            || Currency::refreshCurrencies()) {
             return false;
         }
         
         return true;
     }
-    
+
     /**
      * Delete config when uninstall
+     *
      * @return unknown
      */
     public function uninstall()
@@ -101,7 +88,7 @@ class Ps_Targetpay extends PaymentModule
         
         return parent::uninstall();
     }
-    
+
     /**
      * Function called by install
      * Column Descriptions:
@@ -112,9 +99,6 @@ class Ps_Targetpay extends PaymentModule
      * bank_id: The bank identifier
      * description: Description of the payment
      * amount: Decimal of the amount. 1 euro and 10 cents is "1.10"
-     * status: init:0, success:1, fail:2
-     * via
-     *
      */
     public function createTargetpayIdealTable()
     {
@@ -126,19 +110,65 @@ class Ps_Targetpay extends PaymentModule
             `rtlo` int(11) NOT NULL,
             `paymethod` varchar(8) NOT NULL DEFAULT 'IDE',
             `transaction_id` varchar(255) NOT NULL,
-            `bank_id` varchar(8) NOT NULL,
             `description` varchar(64) NOT NULL,
             `amount` decimal(11,2) NOT NULL,
-            `bankaccount` varchar(25) NULL,
-            `name` varchar(35) NULL,
-            `city` varchar(25) NULL,
-            `status` int(5) NOT NULL,
-            `via` varchar(25) NULL,
             INDEX `IX_tp_transaction_id` (`transaction_id`)
             ) ENGINE = InnoDB ";
         
         $db->Execute($query);
         
+        return true;
+    }
+    /**
+     * add field 
+     * @return boolean
+     */
+    public function updateTargetpayIdealTable()
+    {
+        $db = Db::getInstance();
+        $sql = "SHOW COLUMNS FROM `"._DB_PREFIX_."targetpay_ideal` LIKE 'paid_amount'";
+        $results = $db->ExecuteS($sql);
+        if (empty($results))
+        {
+            $db->Execute( "ALTER TABLE `" . _DB_PREFIX_ . "targetpay_ideal` ADD `paid_amount` decimal(11,2) NOT NULL DEFAULT '0' AFTER `paymethod`;");
+        }
+        return true;
+    }
+
+    /**
+     * @return bool
+     */
+    public function createOrderPartialStatus()
+    {
+        $db = Db::getInstance();
+        $query = '
+            INSERT INTO `' . _DB_PREFIX_ . 'order_state`
+            SET 
+                `invoice` = 1,
+                `send_email` = 0,
+                `module_name` = "digiwallet_bankwire_partial",
+                `color` = "blue",
+                `unremovable` = 1,
+                `logable` = 1,
+                `paid` = 1
+        ';
+        $db->Execute($query);
+        $statusID = $db->Insert_ID();
+        foreach (Language::getLanguages() as $language) {
+            $query = sprintf('
+                INSERT INTO `' . _DB_PREFIX_ . 'order_state_lang`
+                SET 
+                    `id_order_state` = %d,
+                    `id_lang` = %d,
+                    `name` = "Partial Payment Received",
+                    `template` = "bankwire"
+                ',
+                $statusID,
+                $language['id_lang']
+            );
+            $db->Execute($query);
+        }
+
         return true;
     }
 
@@ -154,6 +184,7 @@ class Ps_Targetpay extends PaymentModule
     /* admin configuration settings */
     /**
      * Admin configuration settings
+     *
      * @return string
      */
     public function getContent()
@@ -162,10 +193,12 @@ class Ps_Targetpay extends PaymentModule
         
         if (Tools::isSubmit('submit' . $this->name)) {
             $RTLO = strval(Tools::getValue('TARGETPAY_RTLO'));
+            $Token = strval(Tools::getValue('TARGETPAY_TOKEN'));
             if (! $RTLO || empty($RTLO) || ! Validate::isGenericName($RTLO) || ! Validate::isUnsignedInt($RTLO)) {
                 $output .= $this->displayError($this->l('Invalid RTLO. Only numbers allowed.'));
             } else {
                 Configuration::updateValue('TARGETPAY_RTLO', $RTLO);
+                Configuration::updateValue('TARGETPAY_TOKEN', $Token);
                 $TEST = strval(Tools::getValue('TARGETPAY_TESTMODE'));
                 Configuration::updateValue('TARGETPAY_TESTMODE', ($TEST == 1) ? '1' : '0');
                 foreach ($this->listMethods as $id => $method) {
@@ -178,9 +211,10 @@ class Ps_Targetpay extends PaymentModule
         
         return $output . $this->displayForm();
     }
-    
+
     /**
      * Build config form
+     *
      * @return string
      */
     public function displayForm()
@@ -218,6 +252,7 @@ class Ps_Targetpay extends PaymentModule
         
         // Load current value
         $helper->fields_value['TARGETPAY_RTLO'] = Configuration::get('TARGETPAY_RTLO');
+        $helper->fields_value['TARGETPAY_TOKEN'] = Configuration::get('TARGETPAY_TOKEN');
         $helper->fields_value['TARGETPAY_TESTMODE'] = Configuration::get('TARGETPAY_TESTMODE');
         foreach ($this->listMethods as $id => $name) {
             $helper->fields_value['ENABLE_METHOD_' . $id] = Configuration::get('ENABLE_METHOD_' . $id);
@@ -226,9 +261,10 @@ class Ps_Targetpay extends PaymentModule
             $this->getConfigForm()
         ));
     }
-    
+
     /**
      * Set config element to array
+     *
      * @return array
      */
     protected function getConfigForm()
@@ -237,10 +273,18 @@ class Ps_Targetpay extends PaymentModule
             array(
                 'col' => 3,
                 'type' => 'text',
-                'desc' => $this->l('Enter a valid RTLO'),
+                'desc' => $this->l('Enter a valid Digiwallet Outlet Identifier'),
                 'name' => 'TARGETPAY_RTLO',
                 'required' => true,
-                'label' => $this->l('RTLO')
+                'label' => $this->l('Digiwallet Outlet Identifier')
+            ),
+            array(
+                'col' => 3,
+                'type' => 'text',
+                'desc' => $this->l('Enter Digiwallet token, register one at digiwallet.nl'),
+                'name' => 'TARGETPAY_TOKEN',
+                'required' => false,
+                'label' => $this->l('Digiwallet Token')
             ),
             array(
                 'type' => 'switch',
@@ -301,7 +345,7 @@ class Ps_Targetpay extends PaymentModule
      * hookPayment
      * Called in Front Office at Payment Screen - displays user this module as payment option
      *
-     * @param unknown $params
+     * @param unknown $params            
      * @return string
      */
     public function hookPayment($params)
@@ -321,11 +365,11 @@ class Ps_Targetpay extends PaymentModule
             return $output;
         }
     }
-    
+
     /**
      * This hook is used to display the order confirmation page.
      *
-     * @param unknown $params
+     * @param unknown $params            
      * @return void|unknown
      */
     public function hookPaymentReturn($params)
@@ -333,45 +377,70 @@ class Ps_Targetpay extends PaymentModule
         if ($this->active == false) {
             return;
         }
-    
+        
         $order = $params['objOrder'];
         if ($order->getCurrentOrderState()->id == Configuration::get('PS_OS_PAYMENT')) {
             $this->smarty->assign('status', 'ok');
-        } else {
-            $this->smarty->assign('status', 'error');
-        }
+        } else 
+            if ($order->getCurrentOrderState()->id == Configuration::get('PS_OS_CHEQUE')) {
+                $this->smarty->assign('status', 'processing');
+            } else {
+                $this->smarty->assign('status', 'error');
+            }
         $this->smarty->assign(array(
-                'id_order' => $order->id,
-                'total' => Tools::displayPrice($params['total_to_pay'], $params['currencyObj'], false)
-            ));
+            'id_order' => $order->id,
+            'total' => Tools::displayPrice($params['total_to_pay'], $params['currencyObj'], false)
+        ));
         return $this->display(__FILE__, 'views/templates/hook/payment_return.tpl');
     }
-    
+
     /**
      * Display error in top of payment section
+     *
      * @return string
      */
     public function hookdisplayPaymentTop()
     {
-        if (! $this->active || ! Tools::getValue('targetpayerror')) {
+        if (! $this->active || ! Tools::getValue('targetpayerror') || Configuration::get('PS_ORDER_PROCESS_TYPE')) {
             return;
         }
-    
+        
         $errorMessage = Tools::getValue('targetpayerror');
-    
+        
         $this->context->smarty->assign(array(
             'errorMessage' => $errorMessage,
             'module' => "targetpay"
         ));
-    
+        
         return $this->display(__FILE__, 'error.tpl');
     }
-    
+
+    /**
+     * Display error in top of payment section for order opc
+     *
+     * @return string
+     */
+    public function hookdisplayBeforeShoppingCartBlock()
+    {
+        if (! $this->active || ! Tools::getValue('targetpayerror') || !Configuration::get('PS_ORDER_PROCESS_TYPE')) {
+            return;
+        }
+        
+        $errorMessage = Tools::getValue('targetpayerror');
+        
+        $this->context->smarty->assign(array(
+            'errorMessage' => $errorMessage,
+            'module' => "targetpay"
+        ));
+        
+        return $this->display(__FILE__, 'error.tpl');
+    }
+
     /**
      * Get template of method
      *
-     * @param string $method
-     * @param string $rtlo
+     * @param string $method            
+     * @param string $rtlo            
      * @return string
      */
     public function paymentOptionsSelection($method, $rtlo)
@@ -381,7 +450,7 @@ class Ps_Targetpay extends PaymentModule
         switch ($method) {
             case "IDE":
                 $idealOBJ = new TargetPayCore($method, $rtlo);
-                $idealBankListArr = $this->setPaymethodInKey("IDE", $idealOBJ->getBankList());
+                $idealBankListArr = $idealOBJ->getBankList();
                 $smarty->assign(array(
                     'method' => $method,
                     'this_path' => $this->_path,
@@ -400,7 +469,7 @@ class Ps_Targetpay extends PaymentModule
                 break;
             case "DEB":
                 $directEBankingOBJ = new TargetPayCore($method, $rtlo);
-                $directEBankingBankListArr = $this->setPaymethodInKey("", $directEBankingOBJ->getBankList());
+                $directEBankingBankListArr = $directEBankingOBJ->getCountryList();
                 $smarty->assign(array(
                     'method' => $method,
                     'this_path' => $this->_path,
@@ -425,87 +494,253 @@ class Ps_Targetpay extends PaymentModule
                 ));
                 return $this->display(__FILE__, 'options_selection_cc.tpl');
                 break;
+            case "AFP":
+                $smarty->assign(array(
+                    'method' => $method,
+                    'this_path' => $this->_path,
+                    'this_path_ssl' => Tools::getShopDomainSsl(true, true) . __PS_BASE_URI__ . 'modules/{$this->name}/'
+                ));
+                return $this->display(__FILE__, 'options_selection_afp.tpl');
+                break;
+            case "BW":
+                $smarty->assign(array(
+                    'method' => $method,
+                    'this_path' => $this->_path,
+                    'this_path_ssl' => Tools::getShopDomainSsl(true, true) . __PS_BASE_URI__ . 'modules/{$this->name}/'
+                ));
+                return $this->display(__FILE__, 'options_selection_bw.tpl');
+                break;
+            case "PYP":
+                $smarty->assign(array(
+                    'method' => $method,
+                    'this_path' => $this->_path,
+                    'this_path_ssl' => Tools::getShopDomainSsl(true, true) . __PS_BASE_URI__ . 'modules/{$this->name}/'
+                ));
+                return $this->display(__FILE__, 'options_selection_pyp.tpl');
+                break;
             default:
         }
     }
-    
-    /**
-     * Create array options of method
-     *
-     * @param unknown $paymethod
-     * @param unknown $BankListArray
-     * @return []
-     */
-    public function setPaymethodInKey($paymethod, $BankListArray)
-    {
-        $newArr = array();
-        foreach ($BankListArray as $key => $value) {
-            $newArr[strtoupper($paymethod) . $key] = $value;
-        }
-        return $newArr;
-    }
-    
+
     /**
      * Get transaction info in targetpay_ideal table
-     * @param string $trxid
+     *
+     * @param string $trxid            
      * @return boolean|object|NULL
      */
     public function selectTransaction($trxid)
     {
-        $sql = sprintf("SELECT `id`, `cart_id`, `rtlo`,`order_id`, `paymethod`, `transaction_id`, `bank_id`, `description`, `amount`, `status`
+        $sql = sprintf("SELECT `id`, `cart_id`, `rtlo`,`order_id`, `paymethod`, `transaction_id`, `description`, `amount`
             FROM `" . _DB_PREFIX_ . "targetpay_ideal`
-            WHERE `transaction_id`= '%s'", $trxid);
+            WHERE `transaction_id` = '%s'
+            ORDER BY `id` DESC", $trxid); // Choose most recent to minimize collision risk because we lack a paymethod field here!
         $result = Db::getInstance()->getRow($sql);
         return $result;
     }
-    
+
+    /**
+     * @param $trxid
+     * @return mixed
+     */
+    public function getBankWirePartialStatusID()
+    {
+        $query = '
+            SELECT `id_order_state`
+            FROM `' . _DB_PREFIX_ . 'order_state`
+            WHERE `module_name` = "digiwallet_bankwire_partial"
+        ';
+        $result = Db::getInstance()->getRow($query);
+
+        return $result['id_order_state'];
+    }
+
     /**
      * Update order, order history, transaction info after payment
-     * @param array $transactionInfoArr
-     * @param string $via
+     *
+     * @param array $transactionInfoArr            
      */
-    public function updateOrderAfterCheck($transactionInfoArr, $via)
+    public function updateOrderAfterCheck($transactionInfoArr)
     {
-        if ($transactionInfoArr['status'] == 0) {
-            $targetpayObj = new TargetPayCore($transactionInfoArr["paymethod"], $transactionInfoArr["rtlo"]);
-            $targetpayObj->checkPayment($transactionInfoArr['transaction_id']);
-            $updateArr = $targetpayObj->getConsumerInfo();
-            if ($targetpayObj->getPaidStatus() || Configuration::get('TARGETPAY_TESTMODE')) {
-                $state = Configuration::get('PS_OS_PAYMENT');
-                $updateArr["status"] = 1;
+        $orderId = (int) $transactionInfoArr['order_id'];
+        $order = new Order($orderId);
+        if (! $order)
+            return ("Order is not found");
+        
+        if ($order->current_state == Configuration::get('PS_OS_PAYMENT'))
+            return ("order $orderId had been done");
+        
+        $trxid = $transactionInfoArr['transaction_id'];
+        
+        $targetpayObj = new TargetPayCore($transactionInfoArr["paymethod"], $transactionInfoArr["rtlo"], "nl", Configuration::get('TARGETPAY_TESTMODE'));
+        
+        $targetpayObj->checkPayment($trxid);
+        
+        $updateArr = [];
+
+        $paymentIsPartial = false;
+        $amountPaid = null;
+        if ($targetpayObj->getPaidStatus()) {
+            $amountPaid = $transactionInfoArr['amount'];
+            if($transactionInfoArr["paymethod"] == 'BW') {
+                $consumber_info = $targetpayObj->getConsumerInfo();
+                if (!empty($consumber_info) && $consumber_info['bw_paid_amount'] > 0) {
+                    $amountPaid = number_format($consumber_info['bw_paid_amount'] / 100, 5);
+                    if ($consumber_info['bw_paid_amount'] < $consumber_info['bw_due_amount']) {
+                        $paymentIsPartial = true;
+                    }
+                }
+                if ($paymentIsPartial) {
+                    $state = $this->getBankWirePartialStatusID(); // Configuration::get('PS_OS_BANKWIRE');
+                    $retMsg = $updateArr["description"] = 'Paid partial';
+                    $updateArr['paid_amount'] = $amountPaid;
+                } else {
+                    $state = Configuration::get('PS_OS_PAYMENT');
+                    $retMsg = $updateArr["description"] = 'Paid';
+                    $updateArr['paid_amount'] = $amountPaid;
+                }
             } else {
-                $state = Configuration::get('PS_OS_ERROR');
-                $updateArr["status"] = 2;
-                $updateArr["description"] = 'Error:' . $targetpayObj->getErrorMessage();
+                $state = Configuration::get('PS_OS_PAYMENT');
+                $retMsg = $updateArr["description"] = 'Paid';
+                $updateArr['paid_amount'] = $amountPaid;
             }
-            
-            $orderId = (int) $transactionInfoArr['order_id'];
-            $history = new OrderHistory();
-            $history->id_order = $orderId;
-            $history->changeIdOrderState($state, $orderId);
-            $history->save();
-            $this->updateTransaction($updateArr, $transactionInfoArr['transaction_id'], $via);
+        } else {
+            $state = Configuration::get('PS_OS_ERROR');
+            $retMsg = $updateArr["description"] = 'Error:' . $targetpayObj->getErrorMessage();
         }
+        
+        $history = new OrderHistory();
+        $history->id_order = $orderId;
+        $history->changeIdOrderState($state, $orderId);
+        $history->save();
+        $this->updateTransaction($updateArr, $trxid);
+        if ($paymentIsPartial) {
+            list($payment) = $order->getOrderPaymentCollection(); // Should be one single payment
+            $payment->amount = $amountPaid;
+            $payment->save();
+        }
+        
+        return $retMsg;
     }
-    
+
     /**
      * Update transaction info in targetpay_ideal table
-     * @param array $updateArr
-     * @param string $trxid
-     * @param string $via
+     *
+     * @param array $updateArr            
+     * @param string $trxid            
      */
-    public function updateTransaction($updateArr, $trxid, $via)
+    public function updateTransaction($updateArr, $trxid)
     {
         $fields = '';
         foreach ($updateArr as $key => $value) {
             $fields .= "`" . $key . "` = '" . $value . "',";
         }
-    
+        $fields = rtrim($fields, ", ");
+        
         $sql = sprintf("UPDATE `" . _DB_PREFIX_ . "targetpay_ideal` SET
             " . $fields . "
-            `via` = '" . $via . "'
             WHERE `transaction_id`= '%s'", $trxid);
         Db::getInstance()->execute($sql);
         return;
+    }
+
+    public function setListMethods()
+    {
+        $this->listMethods = array(
+            "IDE" => array(
+                'name' => 'iDEAL',
+                'enabled' => 1,
+                'extra_text' => $this->l('Enable iDEAL method')
+            ),
+            "MRC" => array(
+                'name' => 'Bancontact',
+                'enabled' => 1,
+                'extra_text' => $this->l('Enable Bancontact method')
+            ),
+            "DEB" => array(
+                'name' => 'Sofort Banking',
+                'enabled' => 1,
+                'extra_text' => $this->l('Enable Sofort Banking method')
+            ),
+            'WAL' => array(
+                'name' => 'Paysafecard',
+                'enabled' => 1,
+                'extra_text' => $this->l('Enable Paysafecard method')
+            ),
+            'CC' => array(
+                'name' => 'Creditcard',
+                'enabled' => 0,
+                'extra_text' => $this->l('Enable Creditcard method (only possible when creditcard is activated on your targetpay account)')
+            ),
+            'AFP' => array(
+                'name' => 'Afterpay',
+                'enabled' => 0,
+                'extra_text' => $this->l('Enable Afterpay method')
+            ),
+            'PYP' => array(
+                'name' => 'Paypal',
+                'enabled' => 0,
+                'extra_text' => $this->l('Enable Paypal method')
+            ),
+            'BW' => array(
+                'name' => 'Bankwire',
+                'enabled' => 0,
+                'extra_text' => $this->l('Enable Bankwire method')
+            )
+        );
+    }
+    
+
+    /**
+     *
+     * @param unknown $params
+     */
+    public function hookActionOrderSlipAdd($params)
+    {
+        $this->refund($params);
+    }
+    
+    /**
+     *
+     * @param unknown $params
+     * @return boolean
+     */
+    public function refund($params)
+    {
+        
+        if (empty($params['productList']))
+            return false;
+    
+            $order = $params['order'];
+            $orderId = $order->id;
+            $customer = new Customer($order->id_customer);
+    
+            $sql = sprintf("SELECT `rtlo`,`paymethod`, `transaction_id`
+            FROM `" . _DB_PREFIX_ . "targetpay_ideal`
+            WHERE `order_id`= '%s'", $orderId);
+            $result = Db::getInstance()->getRow($sql);
+    
+            $refundAmount = 0;
+            foreach ($params['productList'] as $product) {
+                $refundAmount += $product['quantity'] * $product['amount'];
+            }
+    
+            if ($refundAmount == 0)
+                return false;
+    
+                $dataRefund = array(
+                    'paymethodID' => $result['paymethod'],
+                    'transactionID' => $result['transaction_id'],
+                    'amount' => intval(floatval($refundAmount) * 100),
+                    'description' => 'OrderId: ' . $orderId . ', Amount: ' . $refundAmount,
+                    'internalNote' => 'Internal note - OrderId: ' . $orderId . ', Amount: ' . $refundAmount . ', Customer Email: ' . $customer->email,
+                    'consumerName' => $customer->firstname . ' ' . $customer->lastname
+                );
+    
+                $targetPay = new TargetPayCore($result['paymethod'], $result['rtlo']);
+    
+                if (! $targetPay->refund(Configuration::get('TARGETPAY_TOKEN'), $dataRefund)) {
+                    PrestaShopLogger::addLog($targetPay->getErrorMessage(), 3);
+                    $this->context->controller->errors[] = ($targetPay->getErrorMessage());
+                }
     }
 }
