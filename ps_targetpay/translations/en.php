@@ -2,7 +2,6 @@
 
 global $_MODULE;
 $_MODULE = array();
-$_MODULE['<{ps_targetpay}prestashop>ps_targetpay_2928ff408dfdca0706de4a61527666e8'] = 'TargetPay Bank Payments';
 $_MODULE['<{ps_targetpay}prestashop>ps_targetpay_8e399f4c00dbc06718979f4c6b5742ee'] = 'Let the customer pay with popular payment services such as iDEAL (The Netherlands), Bancontact (Belgium), SOFORT Banking (Germany)';
 $_MODULE['<{ps_targetpay}prestashop>ps_targetpay_a02758d758e8bec77a33d7f392eb3f8a'] = 'No currency has been set for this module.';
 $_MODULE['<{ps_targetpay}prestashop>ps_targetpay_92d4773a9f32fc3333cb8238471cf763'] = 'You have to enable the cURL extension on your server to install this module';
@@ -10,12 +9,18 @@ $_MODULE['<{ps_targetpay}prestashop>ps_targetpay_28bc9970040ff0be7e10215f553b3c2
 $_MODULE['<{ps_targetpay}prestashop>ps_targetpay_c888438d14855d7d96a2724ee9c306bd'] = 'Settings updated';
 $_MODULE['<{ps_targetpay}prestashop>ps_targetpay_c9cc8cce247e49bae79f15173ce97354'] = 'Save';
 $_MODULE['<{ps_targetpay}prestashop>ps_targetpay_630f6dc397fe74e52d5189e2c80f282b'] = 'Back to list';
-$_MODULE['<{ps_targetpay}prestashop>ps_targetpay_e09fd0c319bbc8b3849a71bf401ed957'] = 'Enter a valid RTLO';
-$_MODULE['<{ps_targetpay}prestashop>ps_targetpay_e66927f6c759399bcc5b8a644b42d94e'] = 'RTLO';
+$_MODULE['<{ps_targetpay}prestashop>ps_targetpay_54bf1c7805672393a3d5666f92be6402'] = 'Enter a valid Digiwallet Outlet Identifier';
+$_MODULE['<{ps_targetpay}prestashop>ps_targetpay_1dfc6e4b023d4e31aa2c6ee08a987118'] = 'Digiwallet Outlet Identifier';
+$_MODULE['<{ps_targetpay}prestashop>ps_targetpay_66814b522aa37a40a28d33c7416b7086'] = 'Enter Digiwallet token, register one at digiwallet.nl';
+$_MODULE['<{ps_targetpay}prestashop>ps_targetpay_17f4fef15b4c1f50495f58cef04184be'] = 'Digiwallet Token';
 $_MODULE['<{ps_targetpay}prestashop>ps_targetpay_4245499695408b974322be6f01b0d17a'] = 'Test mode';
 $_MODULE['<{ps_targetpay}prestashop>ps_targetpay_1a26f77d23e9f53c173478f95388f85b'] = 'Use this module in test mode';
 $_MODULE['<{ps_targetpay}prestashop>ps_targetpay_00d23a76e43b46dae9ec7aa9dcbebb32'] = 'Enabled';
 $_MODULE['<{ps_targetpay}prestashop>ps_targetpay_b9f5c797ebbf55adccdd8539a65a0241'] = 'Disabled';
+$_MODULE['<{ps_targetpay}prestashop>ps_targetpay_6195ba13f5d31b0d8746001916c90417'] = 'iDEAL bank list mode';
+$_MODULE['<{ps_targetpay}prestashop>ps_targetpay_456816fae643fbae8f381b3498f5bbea'] = 'Show in checkout process';
+$_MODULE['<{ps_targetpay}prestashop>ps_targetpay_e9db67db0d497808ffb03159d9ac453a'] = 'Hide from checkout process, show after confirmation';
+$_MODULE['<{ps_targetpay}prestashop>ps_targetpay_77c74f66c83dd49db2a252953b5acbf2'] = 'Sofort country list mode';
 $_MODULE['<{ps_targetpay}prestashop>ps_targetpay_f4f70727dc34561dfde1a3c529b6205c'] = 'Settings';
 $_MODULE['<{ps_targetpay}prestashop>ps_targetpay_b91fc9b7cd545072455d530fcd296b90'] = 'Enable iDEAL method';
 $_MODULE['<{ps_targetpay}prestashop>ps_targetpay_1e044b532ff24016d786211d847af83b'] = 'Enable Bancontact method';
@@ -30,7 +35,6 @@ $_MODULE['<{ps_targetpay}prestashop>bwintro_93bda2269a6ecdca09b5260e7546af56'] =
 $_MODULE['<{ps_targetpay}prestashop>bwintro_0a09137885d7c41857dd149eccef3b8b'] = 'Would you be so friendly to transfer the total amount of €%s to the bankaccount [1]%s[/1] in name of %s*?';
 $_MODULE['<{ps_targetpay}prestashop>bwintro_20bd210186993fc72ae826adcfa2e058'] = 'State the payment feature [1]%s[/1], this way the payment can be automatically processed.';
 $_MODULE['<{ps_targetpay}prestashop>bwintro_c88fb5579430583b5d7c5d7e3ad41d1a'] = 'As soon as this happens you shall receive a confirmation mail on %s';
-$_MODULE['<{ps_targetpay}prestashop>bwintro_319660835f44beedb1b639aa0e8612a0'] = 'If it is necessary for payments abroad, then the BIC code from the bank %s and the name of the bank is %s.';
 $_MODULE['<{ps_targetpay}prestashop>bwintro_c71f8b5b72d112ab8eee6b8a7f571fd6'] = 'Payment for our webstore is processed by TargetMedia. TargetMedia is certified as a Collecting Payment Service Provider by Currence. This means we set the highest security standards when is comes to security of payment for you as a customer and us as a webshop.';
 $_MODULE['<{ps_targetpay}prestashop>payment_return_88526efe38fd18179a127024aba8c1d7'] = 'Your order on %s is complete.';
 $_MODULE['<{ps_targetpay}prestashop>payment_return_6b8866b03a8ca365a48431a6680133fa'] = 'Your order information:';

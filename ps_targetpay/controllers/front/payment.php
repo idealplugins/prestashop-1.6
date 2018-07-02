@@ -19,14 +19,13 @@ class Ps_TargetpayPaymentModuleFrontController extends ModuleFrontController
         $ps_targetpay = $this->module;
         $option = Tools::getValue('option');
         $method = Tools::getValue('method');
-        $test = Configuration::get('TARGETPAY_TESTMODE');
         $rtlo = Configuration::get('TARGETPAY_RTLO');
         $cart = $this->context->cart;
         $cartId = $cart->id;
 
         $amount = $cart->getOrderTotal();
 
-        $targetpayObj = new TargetPayCore($method, $rtlo, "nl", $test);
+        $targetpayObj = new TargetPayCore($method, $rtlo, "nl");
         
         if ($option) {
             $targetpayObj->setBankId($option);
@@ -46,8 +45,9 @@ class Ps_TargetpayPaymentModuleFrontController extends ModuleFrontController
 
         $result = $targetpayObj->startPayment();
         if ($result) {
-            $state = Configuration::get('PS_OS_CHEQUE');
-            $ps_targetpay->validateOrder($cartId, $state, $amount, $ps_targetpay->displayName . "(" . $ps_targetpay->listMethods[$targetpayObj->getPayMethod()]['name'] . ")", null, array(
+            $listMethods = $ps_targetpay->getListMethods();
+            $state = $ps_targetpay->getDigiwalletStatusID($ps_targetpay::DIGIWALLET_PENDING);
+            $ps_targetpay->validateOrder($cartId, $state, $amount, $ps_targetpay->displayName . "(" . $listMethods[$targetpayObj->getPayMethod()]['name'] . ")", null, array(
                 "transaction_id" => $targetpayObj->getTransactionId()
             ), false, false, $cart->secure_key);
             
@@ -71,10 +71,19 @@ class Ps_TargetpayPaymentModuleFrontController extends ModuleFrontController
                 ];
                 
                 Tools::redirectLink('index.php?fc=module&module=ps_targetpay&controller=bwIntro');
+            } else {
+                //rebuild cart
+                $ps_targetpay->rebuildCart($ps_targetpay->currentOrder);
             }
             Tools::redirectLink($result);
         } else {
-            Tools::redirectLink('index.php?controller=order&step=3&targetpayerror=' . urldecode($targetpayObj->getErrorMessage()));
+            $opc = (bool) Configuration::get('PS_ORDER_PROCESS_TYPE');
+            if ($opc) {
+                $link = 'index.php?controller=order-opc&targetpayerror=' .  urldecode($targetpayObj->getErrorMessage());
+            } else {
+                $link = 'index.php?controller=order&step=3&targetpayerror=' .  urldecode($targetpayObj->getErrorMessage());
+            }
+            Tools::redirectLink($link);
         }
     }
 
@@ -159,15 +168,26 @@ class Ps_TargetpayPaymentModuleFrontController extends ModuleFrontController
      */
     private static function breakDownStreet($street)
     {
-        $out = [];
+        $out = [
+            'street' => null,
+            'houseNumber' => null,
+            'houseNumberAdd' => null,
+        ];
         $addressResult = null;
         preg_match("/(?P<address>\D+) (?P<number>\d+) (?P<numberAdd>.*)/", $street, $addressResult);
-        if(!$addressResult) {
+        if (! $addressResult) {
             preg_match("/(?P<address>\D+) (?P<number>\d+)/", $street, $addressResult);
         }
+        if (empty($addressResult)) {
+            $out['street'] = $street;
+            
+            return $out;
+        }
+        
         $out['street'] = array_key_exists('address', $addressResult) ? $addressResult['address'] : null;
         $out['houseNumber'] = array_key_exists('number', $addressResult) ? $addressResult['number'] : null;
         $out['houseNumberAdd'] = array_key_exists('numberAdd', $addressResult) ? trim(strtoupper($addressResult['numberAdd'])) : null;
+        
         return $out;
     }
     
@@ -189,12 +209,13 @@ class Ps_TargetpayPaymentModuleFrontController extends ModuleFrontController
         $streetParts = self::breakDownStreet($addr_invoice->address1);
         
         $targetPay->bindParam('billingstreet', $streetParts['street']);
-        $targetPay->bindParam('billinghousenumber', $streetParts['houseNumber'].$streetParts['houseNumberAdd']);
+        $targetPay->bindParam('billinghousenumber', empty($streetParts['houseNumber'].$streetParts['houseNumberAdd']) ? $addr_invoice->address1 : $streetParts['houseNumber'] . ' ' . $streetParts['houseNumberAdd']);
         $targetPay->bindParam('billingpostalcode', $addr_invoice->postcode);
         $targetPay->bindParam('billingcity', $addr_invoice->city);
         $targetPay->bindParam('billingpersonemail', $customer->email);
         $targetPay->bindParam('billingpersoninitials', "");
         $targetPay->bindParam('billingpersongender', "");
+        $targetPay->bindParam('billingpersonfirstname', $addr_invoice->firstname);
         $targetPay->bindParam('billingpersonsurname', $addr_invoice->lastname);
         $targetPay->bindParam('billingcountrycode', $invoiceCountry);
         $targetPay->bindParam('billingpersonlanguagecode', $invoiceCountry);
@@ -204,12 +225,13 @@ class Ps_TargetpayPaymentModuleFrontController extends ModuleFrontController
         $streetParts = self::breakDownStreet($addr_delivery->address1);
         
         $targetPay->bindParam('shippingstreet', $streetParts['street']);
-        $targetPay->bindParam('shippinghousenumber', $streetParts['houseNumber'].$streetParts['houseNumberAdd']);
+        $targetPay->bindParam('shippinghousenumber', empty($streetParts['houseNumber'].$streetParts['houseNumberAdd']) ? $addr_delivery->address1 : $streetParts['houseNumber'] . ' ' . $streetParts['houseNumberAdd']);
         $targetPay->bindParam('shippingpostalcode', $addr_delivery->postcode);
         $targetPay->bindParam('shippingcity', $addr_delivery->city);
         $targetPay->bindParam('shippingpersonemail', $customer->email);
         $targetPay->bindParam('shippingpersoninitials', "");
         $targetPay->bindParam('shippingpersongender', "");
+        $targetPay->bindParam('shippingpersonfirstname', $addr_delivery->firstname);
         $targetPay->bindParam('shippingpersonsurname', $addr_delivery->lastname);
         $targetPay->bindParam('shippingcountrycode', $deliveryCountry);
         $targetPay->bindParam('shippingpersonlanguagecode', $deliveryCountry);

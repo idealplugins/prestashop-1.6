@@ -20,7 +20,7 @@
  */
 class TargetPayCore
 {
-    const APP_ID = 'dw_prestashop1.6_1.0.1';
+    const APP_ID = 'dw_prestashop1.6_1.0.4';
 
     // Constants
     
@@ -65,7 +65,6 @@ class TargetPayCore
     // Variables
     
     protected $rtlo             = null;
-    protected $testMode         = false;
     
     protected $language         = "nl";
     protected $payMethod        = null;
@@ -100,7 +99,7 @@ class TargetPayCore
      * @param int $rtlo
      *            Layoutcode
      */
-    public function __construct($payMethod, $rtlo = false, $language = "nl", $testMode = false)
+    public function __construct($payMethod, $rtlo = false, $language = "nl")
     {
         $payMethod = strtoupper($payMethod);
         if (in_array($payMethod, $this->paymentOptions)) {
@@ -109,7 +108,6 @@ class TargetPayCore
             return false;
         }
         $this->rtlo = (int) $rtlo;
-        $this->testMode = ($testMode) ? '1' : '0';
         $this->language = strtolower(substr($language, 0, 2));
     }
 
@@ -185,14 +183,14 @@ class TargetPayCore
             $this->errorMessage = self::ERR_NO_REPORT_URL;
             return false;
         }
-        if (($this->payMethod == "IDE") && (! $this->bankId)) {
-            $this->errorMessage = self::ERR_IDEAL_NO_BANK;
-            return false;
-        }
-        if (($this->payMethod == "DEB") && (! $this->countryId)) {
-            $this->errorMessage = self::ERR_SOFORT_NO_COUNTRY;
-            return false;
-        }
+//         if (($this->payMethod == "IDE") && (! $this->bankId)) {
+//             $this->errorMessage = self::ERR_IDEAL_NO_BANK;
+//             return false;
+//         }
+//         if (($this->payMethod == "DEB") && (! $this->countryId)) {
+//             $this->errorMessage = self::ERR_SOFORT_NO_COUNTRY;
+//             return false;
+//         }
         $this->returnUrl = str_replace("%payMethod%", $this->payMethod, $this->returnUrl);
         $this->cancelUrl = str_replace("%payMethod%", $this->payMethod, $this->cancelUrl);
         $this->reportUrl = str_replace("%payMethod%", $this->payMethod, $this->reportUrl);
@@ -206,7 +204,7 @@ class TargetPayCore
                 $url .= '?ver=2' . '&lang=' . urlencode($this->getLanguage(array("NL", "FR", "EN"), "NL"));
                 break;
             case 'DEB':
-                $url .= '?ver=2&type=1' . '&country='.urlencode($this->countryId). '&lang=' . urlencode($this->getLanguage(array("NL", "EN", "DE"), "DE"));
+                $url .= '?ver=2&type=1' . '&country='.urlencode($this->countryId ? $this->countryId : 'DE'). '&lang=' . urlencode($this->getLanguage(array("NL", "EN", "DE"), "DE"));
                 break;
             case 'CC':
                 $url .= '?ver=3';
@@ -224,7 +222,6 @@ class TargetPayCore
         $url .= "&rtlo=".urlencode($this->rtlo) .
         "&amount=".urlencode($this->amount).
         "&description=".urlencode($this->description).
-        "&test=".$this->testMode.
         "&userip=".urlencode($_SERVER["REMOTE_ADDR"]).
         "&domain=".urlencode($_SERVER["HTTP_HOST"]).
         "&app_id=".urlencode(self::APP_ID).
@@ -267,7 +264,7 @@ class TargetPayCore
      * @param string $transactionId
      *            Transaction ID to check
      *
-     *            Returns true if payment successfull (or testmode) and false if not
+     *            Returns true if payment successfull and false if not
      *
      */
     public function checkPayment($transactionId)
@@ -283,7 +280,6 @@ class TargetPayCore
         $url = $this->checkAPIs[$this->payMethod] . "?" .
             "rtlo=" . urlencode($this->rtlo) . "&" .
             "trxid=" . urlencode($transactionId) . "&" .
-            "test=" . (($this->testMode) ? "1" : "0") .
             "&once=0";
         
         if($this->payMethod == 'BW') {
